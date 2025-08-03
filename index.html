@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Precise Overthinking Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, #1a0033, #3d0066);
+            min-height: 100vh;
+            color: #f8f9fa;
+        }
+        
+        .thought-bubble {
+            position: relative;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transform: translateY(20px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .thought-bubble.visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        .thought-bubble::before {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 15px solid rgba(255, 255, 255, 0.95);
+            bottom: -15px;
+            left: 20px;
+        }
+        
+        .neuron {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .brain-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
+        }
+        
+        .brain-waves {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .brain-waves:nth-child(2) {
+            animation-delay: 0.5s;
+        }
+        
+        .brain-waves:nth-child(3) {
+            animation-delay: 1s;
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(0.5);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+        
+        .anxiety-meter {
+            height: 10px;
+            background: linear-gradient(to right, #4ade80, #facc15, #f87171);
+            border-radius: 5px;
+            transition: width 0.8s ease;
+        }
+        
+        .input-field {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .input-field:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #9333ea, #7e22ce);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(147, 51, 234, 0.3);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(147, 51, 234, 0.4);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        
+        .tag {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+        
+        .neural-path {
+            position: absolute;
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0) 100%);
+            height: 1px;
+            transform-origin: left center;
+            animation: fadeInOut 2s ease-in-out;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        @keyframes fadeInOut {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        
+        .thought-category {
+            position: absolute;
+            top: -10px;
+            right: 10px;
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .intensity-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+        
+        .custom-slider {
+            -webkit-appearance: none;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+        }
+        
+        .custom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #9333ea;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(147, 51, 234, 0.5);
+        }
+        
+        .custom-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #9333ea;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(147, 51, 234, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="neural-background" class="fixed inset-0 z-0"></div>
+    
+    <div class="max-w-4xl mx-auto p-4 md:p-6 relative z-10">
+        <div class="flex flex-col md:flex-row items-center justify-center gap-4 mb-8">
+            <div class="brain-container">
+                <div class="brain-waves"></div>
+                <div class="brain-waves"></div>
+                <div class="brain-waves"></div>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-full h-full">
+                    <path d="M9.5 2A2.5 2.5 0 0 1 12 4.5V5a3 3 0 0 0 3 3h.5a2.5 2.5 0 0 1 2.5 2.5c0 .94-.54 1.77-1.33 2.17A3.99 3.99 0 0 1 18 16v.5a2.5 2.5 0 0 1-2.5 2.5a2.5 2.5 0 0 1-2.5-2.5V16a4 4 0 0 1-4-4v-.5A2.5 2.5 0 0 1 6.5 9A2.5 2.5 0 0 1 9 6.5V4.5A2.5 2.5 0 0 1 9.5 2Z"></path>
+                    <path d="M12 8v1"></path>
+                    <path d="M12 12v1"></path>
+                    <path d="M12 16v1"></path>
+                </svg>
+            </div>
+            <div class="text-center md:text-left">
+                <h1 class="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-300 to-pink-300">Precise Overthinking Simulator</h1>
+                <p class="text-purple-200 opacity-80">Experience how your mind spirals from a single thought</p>
+            </div>
+        </div>
+        
+        <div class="bg-white bg-opacity-10 backdrop-filter backdrop-blur-md rounded-xl p-6 mb-8 border border-white border-opacity-20">
+            <div class="mb-6">
+                <label for="thought-input" class="block text-lg mb-2 font-medium">Enter your initial thought:</label>
+                <input type="text" id="thought-input" class="input-field w-full p-4 rounded-lg text-white placeholder-white placeholder-opacity-70" placeholder="What's on your mind? (e.g., 'I made a mistake in my presentation')">
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label class="flex justify-between mb-2">
+                        <span>Anxiety Sensitivity:</span>
+                        <span id="sensitivity-value">5</span>
+                    </label>
+                    <input type="range" id="sensitivity-slider" min="1" max="10" value="5" class="custom-slider w-full">
+                </div>
+                
+                <div>
+                    <label class="flex justify-between mb-2">
+                        <span>Overthinking Speed:</span>
+                        <span id="speed-value">5</span>
+                    </label>
+                    <input type="range" id="speed-slider" min="1" max="10" value="5" class="custom-slider w-full">
+                </div>
+            </div>
+            
+            <div class="flex items-center mb-4">
+                <div class="w-full">
+                    <label class="flex justify-between mb-2">
+                        <span>Current Anxiety Level:</span>
+                        <span id="anxiety-level">30%</span>
+                    </label>
+                    <div class="w-full bg-white bg-opacity-20 rounded-lg h-3">
+                        <div id="anxiety-meter" class="anxiety-meter" style="width: 30%;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <button id="simulate-btn" class="btn-primary w-full py-4 text-white font-bold rounded-lg text-lg">Start Overthinking</button>
+        </div>
+        
+        <div id="thoughts-container" class="space-y-4 mb-8"></div>
+        
+        <div id="coping-container" class="bg-white bg-opacity-10 backdrop-filter backdrop-blur-md rounded-xl p-6 border border-white border-opacity-20 hidden">
+            <h2 class="text-xl font-bold mb-4">Breaking the Overthinking Cycle</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-white bg-opacity-5 p-4 rounded-lg border border-white border-opacity-10">
+                    <h3 class="font-medium mb-2">Cognitive Reframing</h3>
+                    <p class="text-sm opacity-80">Challenge your thoughts by asking: "What evidence supports this?" and "Is there another explanation?"</p>
+                </div>
+                <div class="bg-white bg-opacity-5 p-4 rounded-lg border border-white border-opacity-10">
+                    <h3 class="font-medium mb-2">Mindfulness Practice</h3>
+                    <p class="text-sm opacity-80">Focus on your breathing for 2 minutes. Notice thoughts without judgment.</p>
+                </div>
+                <div class="bg-white bg-opacity-5 p-4 rounded-lg border border-white border-opacity-10">
+                    <h3 class="font-medium mb-2">Action Steps</h3>
+                    <p class="text-sm opacity-80">What small, concrete action can you take right now instead of overthinking?</p>
+                </div>
+                <div class="bg-white bg-opacity-5 p-4 rounded-lg border border-white border-opacity-10">
+                    <h3 class="font-medium mb-2">Perspective Shift</h3>
+                    <p class="text-sm opacity-80">Ask yourself: "Will this matter in a week? A month? A year?"</p>
+                </div>
+            </div>
+            <button id="reset-btn" class="mt-6 bg-white text-purple-900 font-medium py-3 px-6 rounded-lg hover:bg-opacity-90 transition">Reset Simulator</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const thoughtInput = document.getElementById('thought-input');
+        const simulateBtn = document.getElementById('simulate-btn');
+        const thoughtsContainer = document.getElementById('thoughts-container');
+        const anxietyMeter = document.getElementById('anxiety-meter');
+        const anxietyLevel = document.getElementById('anxiety-level');
+        const sensitivitySlider = document.getElementById('sensitivity-slider');
+        const sensitivityValue = document.getElementById('sensitivity-value');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedValue = document.getElementById('speed-value');
+        const copingContainer = document.getElementById('coping-container');
+        const resetBtn = document.getElementById('reset-btn');
+        const neuralBackground = document.getElementById('neural-background');
+        
+        // Update slider value displays
+        sensitivitySlider.addEventListener('input', () => {
+            sensitivityValue.textContent = sensitivitySlider.value;
+        });
+        
+        speedSlider.addEventListener('input', () => {
+            speedValue.textContent = speedSlider.value;
+        });
+        
+        // Create neural background
+        function createNeuralBackground() {
+            for (let i = 0; i < 50; i++) {
+                const neuron = document.createElement('div');
+                neuron.className = 'neuron';
+                neuron.style.left = `${Math.random() * 100}%`;
+                neuron.style.top = `${Math.random() * 100}%`;
+                neuralBackground.appendChild(neuron);
+            }
+        }
+        
+        // Create neural connections between neurons
+        function createNeuralConnections() {
+            const neurons = document.querySelectorAll('.neuron');
+            
+            if (neurons.length < 2) return;
+            
+            // Select random neurons to connect
+            const neuronA = neurons[Math.floor(Math.random() * neurons.length)];
+            let neuronB;
+            do {
+                neuronB = neurons[Math.floor(Math.random() * neurons.length)];
+            } while (neuronA === neuronB);
+            
+            // Get positions
+            const rectA = neuronA.getBoundingClientRect();
+            const rectB = neuronB.getBoundingClientRect();
+            
+            // Calculate distance and angle
+            const dx = rectB.left - rectA.left;
+            const dy = rectB.top - rectA.top;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            
+            // Create path
+            const path = document.createElement('div');
+            path.className = 'neural-path';
+            path.style.width = `${distance}px`;
+            path.style.left = `${rectA.left}px`;
+            path.style.top = `${rectA.top}px`;
+            path.style.transform = `rotate(${angle}deg)`;
+            
+            neuralBackground.appendChild(path);
+            
+            // Remove path after animation
+            setTimeout(() => {
+                path.remove();
+            }, 2000);
+        }
+        
+        // Initialize neural background
+        createNeuralBackground();
+        setInterval(createNeuralConnections, 500);
+        
+        // Anxiety meter random fluctuation with sensitivity
+        let anxietyInterval;
+        function startAnxietyFluctuation() {
+            anxietyInterval = setInterval(() => {
+                if (thoughtsContainer.children.length > 0) {
+                    const sensitivity = parseInt(sensitivitySlider.value);
+                    const currentWidth = parseInt(anxietyMeter.style.width);
+                    const fluctuation = (Math.random() * sensitivity * 2) - sensitivity;
+                    let newWidth = currentWidth + fluctuation;
+                    
+                    // Keep within bounds
+                    newWidth = Math.max(10, Math.min(95, newWidth));
+                    
+                    anxietyMeter.style.width = newWidth + '%';
+                    anxietyLevel.textContent = Math.round(newWidth) + '%';
+                }
+            }, 1500);
+        }
+        
+        function stopAnxietyFluctuation() {
+            clearInterval(anxietyInterval);
+        }
+        
+        // Generate overthinking thoughts based on input
+        simulateBtn.addEventListener('click', () => {
+            const initialThought = thoughtInput.value.trim();
+            
+            if (!initialThought) {
+                alert('Please enter an initial thought.');
+                return;
+            }
+            
+            // Clear previous thoughts
+            thoughtsContainer.innerHTML = '';
+            copingContainer.classList.add('hidden');
+            
+            // Set initial anxiety level
+            const initialAnxiety = 30 + Math.floor(Math.random() * 20);
+            anxietyMeter.style.width = initialAnxiety + '%';
+            anxietyLevel.textContent = initialAnxiety + '%';
+            
+            // Change button text
+            simulateBtn.textContent = 'Overthinking in progress...';
+            simulateBtn.disabled = true;
+            
+            // Start anxiety fluctuation
+            startAnxietyFluctuation();
+            
+            // Generate overthinking thoughts
+            generateOverthinkingThoughts(initialThought);
+        });
+        
+        // Reset simulator
+        resetBtn.addEventListener('click', () => {
+            thoughtsContainer.innerHTML = '';
+            thoughtInput.value = '';
+            anxietyMeter.style.width = '30%';
+            anxietyLevel.textContent = '30%';
+            simulateBtn.textContent = 'Start Overthinking';
+            simulateBtn.disabled = false;
+            copingContainer.classList.add('hidden');
+            stopAnxietyFluctuation();
+        });
+        
+        function createThoughtBubble(text, type, intensity) {
+            const bubble = document.createElement('div');
+            bubble.className = 'thought-bubble relative';
+            
+            // Style based on thought type
+            let categoryStyle, categoryText;
+            switch (type) {
+                case 'initial':
+                    categoryStyle = 'bg-blue-100 text-blue-800';
+                    categoryText = 'Initial Thought';
+                    break;
+                case 'interpretation':
+                    categoryStyle = 'bg-purple-100 text-purple-800';
+                    categoryText = 'Interpretation';
+                    break;
+                case 'assumption':
+                    categoryStyle = 'bg-amber-100 text-amber-800';
+                    categoryText = 'Assumption';
+                    break;
+                case 'prediction':
+                    categoryStyle = 'bg-green-100 text-green-800';
+                    categoryText = 'Prediction';
+                    break;
+                case 'catastrophizing':
+                    categoryStyle = 'bg-red-100 text-red-800';
+                    categoryText = 'Catastrophizing';
+                    break;
+                case 'self-criticism':
+                    categoryStyle = 'bg-pink-100 text-pink-800';
+                    categoryText = 'Self-Criticism';
+                    break;
+                case 'rumination':
+                    categoryStyle = 'bg-indigo-100 text-indigo-800';
+                    categoryText = 'Rumination';
+                    break;
+                default:
+                    categoryStyle = 'bg-gray-100 text-gray-800';
+                    categoryText = 'Thought';
+            }
+            
+            // Intensity indicator color
+            let intensityColor;
+            if (intensity <= 3) {
+                intensityColor = '#4ade80'; // green
+            } else if (intensity <= 6) {
+                intensityColor = '#facc15'; // yellow
+            } else {
+                intensityColor = '#f87171'; // red
+            }
+            
+            bubble.innerHTML = `
+                <span class="thought-category ${categoryStyle}">${categoryText}</span>
+                <p class="text-gray-800 mb-3">${text}</p>
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center">
+                        <span class="intensity-indicator" style="background-color: ${intensityColor}"></span>
+                        <span class="text-xs text-gray-500">Intensity: ${intensity}/10</span>
+                    </div>
+                    <span class="text-xs text-gray-500">${getCurrentTime()}</span>
+                </div>
+            `;
+            
+            thoughtsContainer.appendChild(bubble);
+            
+            // Trigger animation after a small delay
+            setTimeout(() => {
+                bubble.classList.add('visible');
+            }, 50);
+            
+            // Scroll to the new thought
+            setTimeout(() => {
+                bubble.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }, 100);
+        }
+        
+        function getCurrentTime() {
+            const now = new Date();
+            return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+        
+        function generateOverthinkingThoughts(initialThought) {
+            // Create initial thought bubble
+            createThoughtBubble(initialThought, 'initial', 3);
+            
+            // Generate thought patterns based on the initial thought
+            const thoughtPatterns = generateThoughtPatterns(initialThought);
+            
+            // Generate subsequent thoughts with delays
+            let delay = 1500;
+            const speedFactor = 11 - parseInt(speedSlider.value); // Invert so higher = faster
+            
+            thoughtPatterns.forEach((thought, index) => {
+                setTimeout(() => {
+                    createThoughtBubble(thought.text, thought.type, thought.intensity);
+                    
+                    // Increase anxiety as thoughts progress
+                    const sensitivity = parseInt(sensitivitySlider.value);
+                    const currentAnxiety = parseInt(anxietyLevel.textContent);
+                    const anxietyIncrease = Math.floor((thought.intensity / 10) * sensitivity * 2);
+                    const newAnxiety = Math.min(95, currentAnxiety + anxietyIncrease);
+                    anxietyMeter.style.width = newAnxiety + '%';
+                    anxietyLevel.textContent = newAnxiety + '%';
+                    
+                    // Show coping strategies after all thoughts
+                    if (index === thoughtPatterns.length - 1) {
+                        setTimeout(() => {
+                            copingContainer.classList.remove('hidden');
+                            simulateBtn.textContent = 'Start Overthinking';
+                            simulateBtn.disabled = false;
+                        }, 1500);
+                    }
+                }, delay);
+                
+                delay += (1200 + Math.random() * 800) * (speedFactor / 5); // Adjust delay based on speed setting
+            });
+        }
+        
+        function generateThoughtPatterns(initialThought) {
+            // Analyze the initial thought to generate related overthinking patterns
+            const thought = initialThought.toLowerCase();
+            let patterns = [];
+            
+            // Extract key topics and contexts from the initial thought
+            const topics = extractTopics(thought);
+            
+            // Generate a sequence of overthinking patterns based on common cognitive distortions
+            // Each pattern builds on the previous one in a logical progression
+            
+            // Start with interpretations of the initial thought
+            patterns.push({
+                text: generateInterpretation(thought, topics),
+                type: 'interpretation',
+                intensity: 4
+            });
+            
+            // Add assumptions based on the interpretation
+            patterns.push({
+                text: generateAssumption(thought, topics),
+                type: 'assumption',
+                intensity: 5
+            });
+            
+            // Add negative predictions
+            patterns.push({
+                text: generatePrediction(thought, topics),
+                type: 'prediction',
+                intensity: 6
+            });
+            
+            // Add self-criticism
+            patterns.push({
+                text: generateSelfCriticism(thought, topics),
+                type: 'self-criticism',
+                intensity: 7
+            });
+            
+            // Add rumination (dwelling on the thought)
+            patterns.push({
+                text: generateRumination(thought, topics),
+                type: 'rumination',
+                intensity: 8
+            });
+            
+            // End with catastrophizing (worst-case scenario)
+            patterns.push({
+                text: generateCatastrophizing(thought, topics),
+                type: 'catastrophizing',
+                intensity: 9
+            });
+            
+            return patterns;
+        }
+        
+        function extractTopics(thought) {
+            // Extract key topics and contexts from the thought
+            const topics = {
+                isWorkRelated: /job|work|career|presentation|meeting|boss|colleague|project|deadline|interview|performance|promotion/i.test(thought),
+                isRelationshipRelated: /relationship|date|partner|boyfriend|girlfriend|husband|wife|spouse|marriage|love|breakup|divorce|text|call|message/i.test(thought),
+                isSocialRelated: /friend|party|gathering|social|conversation|impression|awkward|judgment|opinion|group|invite/i.test(thought),
+                isHealthRelated: /health|sick|pain|doctor|symptom|disease|condition|medication|treatment|diagnosis|hospital|illness/i.test(thought),
+                isFinancialRelated: /money|finance|debt|afford|budget|expense|cost|payment|bill|loan|saving|investment/i.test(thought),
+                isAppearanceRelated: /look|appearance|weight|clothes|outfit|hair|body|fat|thin|attractive|ugly|style/i.test(thought),
+                isFutureRelated: /future|plan|goal|dream|aspiration|success|failure|direction|path|purpose|meaning|life/i.test(thought),
+                isPastRelated: /past|mistake|regret|decision|choice|memory|childhood|trauma|history|experience/i.test(thought),
+                isAcademicRelated: /school|study|exam|test|grade|class|course|degree|education|college|university|professor|teacher/i.test(thought),
+                mainTopic: thought
+            };
+            
+            return topics;
+        }
+        
+        function generateInterpretation(thought, topics) {
+            // Generate an interpretation based on the context
+            if (topics.isWorkRelated) {
+                return selectOne([
+                    "My performance is probably being closely scrutinized right now.",
+                    "They must think I'm not capable enough for this role.",
+                    "That mistake I made is going to reflect poorly on my entire work history.",
+                    "My colleagues are probably questioning my competence.",
+                    "My boss likely noticed that flaw in my work and is disappointed."
+                ]);
+            } else if (topics.isRelationshipRelated) {
+                return selectOne([
+                    "Their tone seemed off, they must be losing interest in me.",
+                    "The way they responded indicates they're probably upset with me.",
+                    "They're taking longer than usual to reply, which means something's wrong.",
+                    "That comment they made had a hidden meaning about our relationship.",
+                    "They're probably comparing me to their ex or someone else."
+                ]);
+            } else if (topics.isSocialRelated) {
+                return selectOne([
+                    "Everyone noticed that awkward thing I said and is judging me.",
+                    "They're only being nice to me out of pity or obligation.",
+                    "I'm probably coming across as boring or uninteresting.",
+                    "They're all much more socially skilled than I am.",
+                    "That laugh after I spoke means they found what I said ridiculous."
+                ]);
+            } else if (topics.isHealthRelated) {
+                return selectOne([
+                    "This symptom is probably something serious that the doctor missed.",
+                    "My body isn't responding to treatment like it should be.",
+                    "This pain is different than normal, it must be something concerning.",
+                    "I'm probably getting worse but not noticing all the symptoms.",
+                    "My health issues are likely more complicated than the doctors realize."
+                ]);
+            } else if (topics.isFinancialRelated) {
+                return selectOne([
+                    "I'm falling behind financially compared to everyone else my age.",
+                    "This expense is going to completely derail my financial plans.",
+                    "I'll never be able to save enough for what I really need.",
+                    "My financial decisions have all been mistakes.",
+                    "I'm probably missing something important in my financial planning."
+                ]);
+            } else {
+                // Generic interpretations
+                return selectOne([
+                    `The way this situation is unfolding suggests I've misunderstood something important.`,
+                    `There's probably a negative aspect to this that I haven't fully realized yet.`,
+                    `I sense that things aren't as straightforward as they seem on the surface.`,
+                    `I'm likely missing some critical information that would change everything.`,
+                    `The subtle cues indicate this situation is worse than it appears.`
+                ]);
+            }
+        }
+        
+        function generateAssumption(thought, topics) {
+            // Generate assumptions based on the context
+            if (topics.isWorkRelated) {
+                return selectOne([
+                    "My colleagues are definitely talking about my mistake when I'm not around.",
+                    "My boss is already considering replacing me with someone more competent.",
+                    "Everyone else finds this work easy, I'm the only one struggling.",
+                    "They gave me this project because no one else wanted it.",
+                    "My ideas are being ignored because they don't value my input."
+                ]);
+            } else if (topics.isRelationshipRelated) {
+                return selectOne([
+                    "They're probably talking to other people they're more interested in.",
+                    "They're just with me until someone better comes along.",
+                    "They don't actually enjoy spending time with me.",
+                    "They're keeping their options open and I'm not their priority.",
+                    "They're hiding their true feelings to avoid hurting me."
+                ]);
+            } else if (topics.isSocialRelated) {
+                return selectOne([
+                    "They only invited me because they felt obligated.",
+                    "Everyone else in the group is closer to each other than they are to me.",
+                    "They find me annoying but are too polite to say anything.",
+                    "They're all naturally social, while I have to work at it.",
+                    "They're judging everything I say and do."
+                ]);
+            } else if (topics.isHealthRelated) {
+                return selectOne([
+                    "The doctors aren't taking my symptoms seriously enough.",
+                    "There's probably something rare and difficult to diagnose happening.",
+                    "My body is deteriorating faster than normal for my age.",
+                    "This condition is likely permanent even though they say it's temporary.",
+                    "I'm probably more sensitive to side effects than most people."
+                ]);
+            } else if (topics.isFinancialRelated) {
+                return selectOne([
+                    "I'll never have the financial security that others have.",
+                    "There are financial strategies everyone else knows about that I'm missing.",
+                    "I'm making all the wrong financial decisions.",
+                    "My financial situation is worse than most people my age.",
+                    "I'll always be struggling with money no matter what I do."
+                ]);
+            } else {
+                // Generic assumptions
+                return selectOne([
+                    `People are definitely judging me more harshly than I realize.`,
+                    `Others wouldn't have gotten themselves into this situation in the first place.`,
+                    `I'm the only one who struggles with this kind of problem.`,
+                    `Everyone else seems to handle these situations effortlessly.`,
+                    `People notice my flaws more than I think they do.`
+                ]);
+            }
+        }
+        
+        function generatePrediction(thought, topics) {
+            // Generate negative predictions based on the context
+            if (topics.isWorkRelated) {
+                return selectOne([
+                    "This mistake will be brought up in my performance review.",
+                    "I'll be passed over for the next promotion because of this.",
+                    "My professional reputation will be damaged by this incident.",
+                    "I'll eventually be assigned fewer responsibilities because they don't trust me.",
+                    "This project will fail and I'll be held responsible."
+                ]);
+            } else if (topics.isRelationshipRelated) {
+                return selectOne([
+                    "They're going to become more distant over the next few weeks.",
+                    "They'll eventually break things off once they really get to know me.",
+                    "This relationship will end like all my previous ones.",
+                    "They'll find someone more interesting and exciting than me.",
+                    "I'll say or do something that will ruin everything between us."
+                ]);
+            } else if (topics.isSocialRelated) {
+                return selectOne([
+                    "I won't be included in the next gathering they plan.",
+                    "Our friendship will gradually fade because I'm not interesting enough.",
+                    "They'll stop making an effort to include me in conversations.",
+                    "I'll be the topic of gossip after I leave.",
+                    "They'll start making excuses when I try to make plans."
+                ]);
+            } else if (topics.isHealthRelated) {
+                return selectOne([
+                    "My condition will worsen despite the treatment.",
+                    "I'll develop complications that the doctor didn't warn me about.",
+                    "This will turn into a chronic issue that affects me for years.",
+                    "The medication will stop working after my body gets used to it.",
+                    "I'll discover more serious symptoms as time goes on."
+                ]);
+            } else if (topics.isFinancialRelated) {
+                return selectOne([
+                    "I'll never be able to afford the lifestyle I want.",
+                    "An unexpected expense will wipe out my savings.",
+                    "I'll always be in debt no matter how hard I try.",
+                    "I won't be able to retire when I want to.",
+                    "My financial situation will only get worse over time."
+                ]);
+            } else {
+                // Generic predictions
+                return selectOne([
+                    `This situation will continue to deteriorate no matter what I do.`,
+                    `I'll look back on this as the beginning of a difficult period in my life.`,
+                    `Things will get worse before they get better, if they ever do.`,
+                    `I'll keep making the same mistakes and never learn.`,
+                    `This problem will expand and affect other areas of my life.`
+                ]);
+            }
+        }
+        
+        function generateSelfCriticism(thought, topics) {
+            // Generate self-criticism based on the context
+            if (topics.isWorkRelated) {
+                return selectOne([
+                    "I should be much further along in my career by now.",
+                    "Someone with my experience shouldn't be making these kinds of mistakes.",
+                    "I'm not as competent as everyone thinks I am.",
+                    "I got this position through luck, not skill or talent.",
+                    "I'm letting down everyone who believed in me professionally."
+                ]);
+            } else if (topics.isRelationshipRelated) {
+                return selectOne([
+                    "I'm too needy and that drives people away.",
+                    "I don't know how to maintain a healthy relationship.",
+                    "I always say the wrong thing at critical moments.",
+                    "I'm not interesting or attractive enough to keep someone's interest.",
+                    "I sabotage relationships because I don't believe I deserve happiness."
+                ]);
+            } else if (topics.isSocialRelated) {
+                return selectOne([
+                    "I'm awkward and don't know how to act in social situations.",
+                    "I never know the right thing to say when it matters.",
+                    "I try too hard and that makes people uncomfortable.",
+                    "I'm boring compared to everyone else in the group.",
+                    "I lack the social skills that come naturally to others."
+                ]);
+            } else if (topics.isHealthRelated) {
+                return selectOne([
+                    "I've neglected my health for too long and now I'm paying the price.",
+                    "I should have noticed these symptoms earlier.",
+                    "I'm not disciplined enough to follow the treatment plan properly.",
+                    "My lifestyle choices have contributed to this condition.",
+                    "I'm overreacting to normal bodily sensations because I'm weak."
+                ]);
+            } else if (topics.isFinancialRelated) {
+                return selectOne([
+                    "I'm terrible at managing money compared to my peers.",
+                    "I make impulsive financial decisions that I always regret.",
+                    "I should have started saving much earlier in life.",
+                    "I waste money on things I don't need.",
+                    "I lack the discipline to stick to a budget."
+                ]);
+            } else {
+                // Generic self-criticism
+                return selectOne([
+                    `I always overthink everything and make situations worse than they need to be.`,
+                    `I'm not as capable as I should be at handling these situations.`,
+                    `Other people wouldn't struggle with this the way I do.`,
+                    `I keep making the same mistakes over and over again.`,
+                    `I'm too sensitive and need to toughen up.`
+                ]);
+            }
+        }
+        
+        function generateRumination(thought, topics) {
+            // Generate rumination (dwelling on thoughts) based on the context
+            if (topics.isWorkRelated) {
+                return selectOne([
+                    "I can't stop replaying that moment in the meeting when everyone looked at me.",
+                    "I keep thinking about all the better ways I could have handled that situation.",
+                    "I'm constantly analyzing every interaction with my boss for hidden meanings.",
+                    "I'm obsessing over whether my email sounded too aggressive or unprofessional.",
+                    "I can't focus on anything else because I'm preoccupied with this work issue."
+                ]);
+            } else if (topics.isRelationshipRelated) {
+                return selectOne([
+                    "I keep analyzing every word of our last conversation for hidden meanings.",
+                    "I can't stop checking my phone to see if they've messaged me back.",
+                    "I'm constantly comparing our relationship to what I see in other couples.",
+                    "I keep thinking about all my past relationship failures and seeing patterns.",
+                    "I'm obsessing over whether I'm being too clingy or too distant."
+                ]);
+            } else if (topics.isSocialRelated) {
+                return selectOne([
+                    "I keep replaying that awkward comment I made and everyone's reactions.",
+                    "I can't stop thinking about whether I was included in the conversation enough.",
+                    "I'm analyzing every facial expression and tone of voice from the gathering.",
+                    "I'm dwelling on whether people actually enjoy my company or just tolerate me.",
+                    "I keep wondering if I should have dressed differently or spoken up more."
+                ]);
+            } else if (topics.isHealthRelated) {
+                return selectOne([
+                    "I can't stop researching my symptoms online and finding worst-case scenarios.",
+                    "I'm constantly monitoring my body for any changes or new symptoms.",
+                    "I keep thinking about what might be happening inside my body right now.",
+                    "I'm obsessing over whether the doctors missed something important.",
+                    "I can't focus on anything else because I'm so preoccupied with my health."
+                ]);
+            } else if (topics.isFinancialRelated) {
+                return selectOne([
+                    "I keep calculating and recalculating my budget but can't make the numbers work.",
+                    "I'm constantly comparing my financial situation to others and feeling behind.",
+                    "I can't stop thinking about all the financial mistakes I've made.",
+                    "I'm obsessing over every purchase and whether it was necessary.",
+                    "I keep worrying about money even when I'm trying to relax."
+                ]);
+            } else {
+                // Generic rumination
+                return selectOne([
+                    `I can't stop thinking about this no matter how hard I try to distract myself.`,
+                    `My mind keeps circling back to this issue even when I'm doing other things.`,
+                    `I'm mentally rehearsing all the worst outcomes over and over again.`,
+                    `I keep analyzing the situation from every angle but can't find peace of mind.`,
+                    `This thought is consuming all my mental energy and I can't focus on anything else.`
+                ]);
+            }
+        }
+        
+        function generateCatastrophizing(thought, topics) {
+            // Generate catastrophizing (worst-case scenarios) based on the context
+            if (topics.isWorkRelated) {
+                return selectOne([
+                    "This mistake will lead to me getting fired and being unable to find another job.",
+                    "My entire career will be defined by this failure and I'll never recover professionally.",
+                    "I'll be known as incompetent throughout the industry and no one will want to work with me.",
+                    "This project will fail so badly that the company will suffer and people will lose their jobs because of me.",
+                    "I'll be demoted or pushed into a dead-end position with no future growth."
+                ]);
+            } else if (topics.isRelationshipRelated) {
+                return selectOne([
+                    "This relationship will end painfully and I'll never find someone else who cares about me.",
+                    "I'll be alone for the rest of my life because I don't know how to maintain relationships.",
+                    "They'll leave me for someone better and I'll have to see them happy with someone else.",
+                    "Everyone will eventually realize I'm not worth loving and abandon me.",
+                    "I'll never experience a healthy, lasting relationship because there's something fundamentally wrong with me."
+                ]);
+            } else if (topics.isSocialRelated) {
+                return selectOne([
+                    "Everyone in my social circle secretly dislikes me and will eventually exclude me completely.",
+                    "I'll become known as that awkward person that no one wants to invite to anything.",
+                    "I'll end up completely isolated with no friends because I can't connect with people properly.",
+                    "People will share embarrassing stories about me and I'll become a joke in social circles.",
+                    "I'll never have genuine friendships because I don't know how to be authentic with people."
+                ]);
+            } else if (topics.isHealthRelated) {
+                return selectOne([
+                    "This condition will progressively worsen until I'm completely debilitated.",
+                    "I'll be diagnosed with something terminal that could have been treated if caught earlier.",
+                    "I'll suffer from chronic pain for the rest of my life with no relief.",
+                    "My health will deteriorate to the point where I become a burden on everyone around me.",
+                    "This is just the beginning of a series of cascading health problems that will define the rest of my life."
+                ]);
+            } else if (topics.isFinancialRelated) {
+                return selectOne([
+                    "I'll end up bankrupt and homeless with no one willing to help me.",
+                    "I'll never be able to retire and will have to work until I physically can't anymore.",
+                    "I'll accumulate so much debt that I'll spend the rest of my life just trying to pay interest.",
+                    "A financial emergency will wipe out everything I've worked for in an instant.",
+                    "I'll never achieve financial stability and will always be one paycheck away from disaster."
+                ]);
+            } else {
+                // Generic catastrophizing
+                return selectOne([
+                    `This situation will spiral completely out of control and ruin my entire life.`,
+                    `Everything I've worked for will collapse because of this one issue.`,
+                    `This is just the beginning of the worst period of my life.`,
+                    `I'll never recover from this and it will define me forever.`,
+                    `This will lead to a series of failures that I won't be able to overcome.`
+                ]);
+            }
+        }
+        
+        // Helper function to select one item randomly from an array
+        function selectOne(array) {
+            return array[Math.floor(Math.random() * array.length)];
+        }
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'968cc8d843c64722',t:'MTc1NDEyOTQxNy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
